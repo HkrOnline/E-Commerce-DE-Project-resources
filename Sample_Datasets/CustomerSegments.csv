@@ -1,0 +1,11 @@
+segment_id,name,description,created_at
+SEG001,VIP,High-value customers,2025-07-27 12:00:00
+SEG002,New,Recently signed-up customers,2025-07-27 12:00:00
+SEG003,Loyal,Repeat buyers,2025-07-27 12:00:00
+SEG004,At Risk,Customers with low recent activity,2025-07-27 12:00:00
+SEG005,Churned,Inactive customers,2025-07-27 12:00:00
+SEG006,High Frequency,Frequent buyers,2025-07-27 12:00:00
+SEG007,Low Spend,Low-value customers,2025-07-27 12:00:00
+SEG008,Premium,Premium subscription holders,2025-07-27 12:00:00
+SEG009,Seasonal,Seasonal buyers,2025-07-27 12:00:00
+SEG010,Corporate,Business accounts,2025-07-27 12:00:00
