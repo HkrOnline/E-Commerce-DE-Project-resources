@@ -1,0 +1,13 @@
+customer_id,name,email,signup_date,created_at
+CUST001,John Doe,john.doe@email.com,2025-01-01 00:00:00,2025-07-27 12:00:00
+CUST002,Jane Smith,jane.smith@email.com,2025-02-01 00:00:00,2025-07-27 12:00:00
+CUST003,Alice Johnson,alice.johnson@email.com,2025-03-01 00:00:00,2025-07-27 12:00:00
+CUST004,Bob Wilson,bob.wilson@email.com,2025-04-01 00:00:00,2025-07-27 12:00:00
+CUST005,Carol Brown,carol.brown@email.com,2025-05-01 00:00:00,2025-07-27 12:00:00
+CUST006,David Lee,david.lee@email.com,2025-06-01 00:00:00,2025-07-27 12:00:00
+CUST007,Emma Davis,emma.davis@email.com,2025-01-15 00:00:00,2025-07-27 12:00:00
+CUST008,Frank Miller,frank.miller@email.com,2025-02-15 00:00:00,2025-07-27 12:00:00
+CUST009,Grace Taylor,grace.taylor@email.com,2025-03-15 00:00:00,2025-07-27 12:00:00
+CUST010,Henry Anderson,henry.anderson@email.com,2025-04-15 00:00:00,2025-07-27 12:00:00
+CUST011,Isabella Martinez,isabella.martinez@email.com,2025-05-15 00:00:00,2025-07-27 12:00:00
+CUST012,James Thomas,james.thomas@email.com,2025-06-15 00:00:00,2025-07-27 12:00:00
