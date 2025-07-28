@@ -1,0 +1,46 @@
+# ADLS Gen2 Folder Structure
+/mnt/adls/
+├── landing/
+│   ├── csv/
+│   │   ├── inventory/
+│   │   │   ├── yyyy/mm/dd/
+│   │   │   │   ├── inventory_20250701.csv
+│   │   ├── productpricinghistory/
+│   │   │   ├── yyyy/mm/dd/
+│   │   ├── productattributes/
+│   │   │   ├── yyyy/mm/dd/
+│   │   ├── locations/
+│   │   │   ├── yyyy/mm/dd/
+│   ├── sftp/
+│   │   ├── returns/
+│   │   │   ├── yyyy/mm/dd/
+│   │   ├── vendors/
+│   │   │   ├── yyyy/mm/dd/
+│   ├── sqlserver/
+│   │   ├── orders/
+│   │   │   ├── yyyy/mm/dd/
+│   │   │   │   ├── orders_20250701.csv
+│   │   ├── orderitems/
+│   │   │   ├── yyyy/mm/dd/
+│   │   ├── payments/
+│   │   │   ├── yyyy/mm/dd/
+│   │   ├── carts/
+│   │   │   ├── yyyy/mm/dd/
+│   │   ├── customers/
+│   │   │   ├── yyyy/mm/dd/
+│   │   ├── products/
+│   │   │   ├── yyyy/mm/dd/
+│   │   ├── categories/
+│   │   │   ├── yyyy/mm/dd/
+│   │   ├── customersegments/
+│   │   │   ├── yyyy/mm/dd/
+│   ├── api/
+│   │   ├── shipments/
+│   │   │   ├── yyyy/mm/dd/
+│   │   │   │   ├── shipments_20250701.json
+│   │   ├── customerreviews/
+│   │   │   ├── yyyy/mm/dd/
+├── bronze/
+├── silver/
+├── gold/
+├── metadata/
