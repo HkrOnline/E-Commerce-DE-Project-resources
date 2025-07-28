@@ -1,0 +1,227 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StructField, StringType, LongType, TimestampType, BooleanType, IntegerType
+from datetime import datetime
+import uuid
+
+# Initialize Spark session
+spark = SparkSession.builder.appName("EcommerceMetadataSetup").getOrCreate()
+
+# Create schema
+spark.sql("CREATE SCHEMA IF NOT EXISTS ecomm_metadata")
+
+# Define function to generate UUID
+def generate_uuid():
+    return str(uuid.uuid4())
+
+# 1. Create etl_table_config table
+spark.sql("""
+CREATE TABLE IF NOT EXISTS ecomm_metadata.etl_table_config (
+    table_id STRING,
+    source_name STRING,
+    table_name STRING,
+    source_path STRING,
+    target_layer STRING,
+    load_type STRING,
+    partition_column STRING,
+    is_active BOOLEAN,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    PRIMARY KEY (table_id)
+)
+USING DELTA
+LOCATION '/mnt/adls/ecomm_metadata/etl_table_config'
+""")
+
+# Sample data for etl_table_config
+etl_table_config_data = [
+    (generate_uuid(), "SQLServer", "Orders", "/landing/orders/", "Bronze", "Incremental", "order_date", True, datetime.now(), datetime.now()),
+    (generate_uuid(), "CSV", "Customers", "/landing/customers/", "Bronze", "Full", "customer_id", True, datetime.now(), datetime.now()),
+    (generate_uuid(), "API", "Returns", "/landing/returns/", "Bronze", "Incremental", "return_date", True, datetime.now(), datetime.now())
+]
+spark.createDataFrame(etl_table_config_data, ["table_id", "source_name", "table_name", "source_path", "target_layer", "load_type", "partition_column", "is_active", "created_at", "updated_at"]).write.mode("append").saveAsTable("ecomm_metadata.etl_table_config")
+
+# 2. Create column_mapping table
+spark.sql("""
+CREATE TABLE IF NOT EXISTS ecomm_metadata.column_mapping (
+    mapping_id STRING,
+    table_id STRING,
+    source_column STRING,
+    target_column STRING,
+    data_type STRING,
+    transformation_rule STRING,
+    is_nullable BOOLEAN,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    PRIMARY KEY (mapping_id)
+)
+USING DELTA
+LOCATION '/mnt/adls/ecomm_metadata/column_mapping'
+""")
+
+# Sample data for column_mapping
+table_ids = spark.sql("SELECT table_id, table_name FROM ecomm_metadata.etl_table_config").collect()
+orders_table_id = [row.table_id for row in table_ids if row.table_name == "Orders"][0]
+customers_table_id = [row.table_id for row in table_ids if row.table_name == "Customers"][0]
+column_mapping_data = [
+    (generate_uuid(), orders_table_id, "order_total", "order_total", "DECIMAL(10,2)", "CAST(order_total AS DECIMAL(10,2))", False, datetime.now(), datetime.now()),
+    (generate_uuid(), customers_table_id, "cust_name", "customer_name", "STRING", "TRIM(cust_name)", True, datetime.now(), datetime.now())
+]
+spark.createDataFrame(column_mapping_data, ["mapping_id", "table_id", "source_column", "target_column", "data_type", "transformation_rule", "is_nullable", "created_at", "updated_at"]).write.mode("append").saveAsTable("ecomm_metadata.column_mapping")
+
+# 3. Create watermark_table
+spark.sql("""
+CREATE TABLE IF NOT EXISTS ecomm_metadata.watermark_table (
+    watermark_id STRING,
+    table_id STRING,
+    watermark_column STRING,
+    watermark_value STRING,
+    last_processed_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    PRIMARY KEY (watermark_id)
+)
+USING DELTA
+LOCATION '/mnt/adls/ecomm_metadata/watermark_table'
+""")
+
+# Sample data for watermark_table
+watermark_data = [
+    (generate_uuid(), orders_table_id, "order_date", "2025-07-01 00:00:00", datetime.now(), datetime.now(), datetime.now()),
+    (generate_uuid(), table_ids[2].table_id, "return_date", "2025-07-01 00:00:00", datetime.now(), datetime.now(), datetime.now())
+]
+spark.createDataFrame(watermark_data, ["watermark_id", "table_id", "watermark_column", "watermark_value", "last_processed_at", "created_at", "updated_at"]).write.mode("append").saveAsTable("ecomm_metadata.watermark_table")
+
+# 4. Create scd_config table
+spark.sql("""
+CREATE TABLE IF NOT EXISTS ecomm_metadata.scd_config (
+    scd_id STRING,
+    table_id STRING,
+    scd_type STRING,
+    key_column STRING,
+    effective_date_column STRING,
+    end_date_column STRING,
+    is_active BOOLEAN,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    PRIMARY KEY (scd_id)
+)
+USING DELTA
+LOCATION '/mnt/adls/ecomm_metadata/scd_config'
+""")
+
+# Sample data for scd_config
+scd_config_data = [
+    (generate_uuid(), customers_table_id, "Type2", "customer_id", "effective_date", "end_date", True, datetime.now(), datetime.now())
+]
+spark.createDataFrame(scd_config_data, ["scd_id", "table_id", "scd_type", "key_column", "effective_date_column", "end_date_column", "is_active", "created_at", "updated_at"]).write.mode("append").saveAsTable("ecomm_metadata.scd_config")
+
+# 5. Create pipeline_status_log table
+spark.sql("""
+CREATE TABLE IF NOT EXISTS ecomm_metadata.pipeline_status_log (
+    log_id STRING,
+    pipeline_id STRING,
+    pipeline_name STRING,
+    execution_start TIMESTAMP,
+    execution_end TIMESTAMP,
+    status STRING,
+    row_count LONG,
+    error_message STRING,
+    created_at TIMESTAMP,
+    PRIMARY KEY (log_id)
+)
+USING DELTA
+LOCATION '/mnt/adls/ecomm_metadata/pipeline_status_log'
+""")
+
+# Sample data for pipeline_status_log
+pipeline_status_log_data = [
+    (generate_uuid(), generate_uuid(), "pl_landing_to_bronze", datetime.now(), datetime.now(), "Success", 1000, None, datetime.now())
+]
+spark.createDataFrame(pipeline_status_log_data, ["log_id", "pipeline_id", "pipeline_name", "execution_start", "execution_end", "status", "row_count", "error_message", "created_at"]).write.mode("append").saveAsTable("ecomm_metadata.pipeline_status_log")
+
+# 6. Create error_log table
+spark.sql("""
+CREATE TABLE IF NOT EXISTS ecomm_metadata.error_log (
+    error_id STRING,
+    pipeline_id STRING,
+    table_id STRING,
+    error_type STRING,
+    error_message STRING,
+    record_id STRING,
+    error_timestamp TIMESTAMP,
+    created_at TIMESTAMP,
+    PRIMARY KEY (error_id)
+)
+USING DELTA
+LOCATION '/mnt/adls/ecomm_metadata/error_log'
+""")
+
+# Sample data for error_log
+error_log_data = [
+    (generate_uuid(), generate_uuid(), orders_table_id, "Schema", "Invalid data type for order_total", "12345", datetime.now(), datetime.now())
+]
+spark.createDataFrame(error_log_data, ["error_id", "pipeline_id", "table_id", "error_type", "error_message", "record_id", "error_timestamp", "created_at"]).write.mode("append").saveAsTable("ecomm_metadata.error_log")
+
+# 7. Create pipeline_config table
+spark.sql("""
+CREATE TABLE IF NOT EXISTS ecomm_metadata.pipeline_config (
+    pipeline_id STRING,
+    pipeline_name STRING,
+    source_layer STRING,
+    target_layer STRING,
+    schedule STRING,
+    is_active BOOLEAN,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    PRIMARY KEY (pipeline_id)
+)
+USING DELTA
+LOCATION '/mnt/adls/ecomm_metadata/pipeline_config'
+""")
+
+# Sample data for pipeline_config
+pipeline_config_data = [
+    (generate_uuid(), "pl_landing_to_bronze", "Landing", "Bronze", "Daily", True, datetime.now(), datetime.now()),
+    (generate_uuid(), "pl_bronze_to_silver", "Bronze", "Silver", "Daily", True, datetime.now(), datetime.now())
+]
+spark.createDataFrame(pipeline_config_data, ["pipeline_id", "pipeline_name", "source_layer", "target_layer", "schedule", "is_active", "created_at", "updated_at"]).write.mode("append").saveAsTable("ecomm_metadata.pipeline_config")
+
+# 8. Create job_control_table
+spark.sql("""
+CREATE TABLE IF NOT EXISTS ecomm_metadata.job_control_table (
+    job_id STRING,
+    pipeline_id STRING,
+    parent_job_id STRING,
+    job_name STRING,
+    execution_order INT,
+    is_active BOOLEAN,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    PRIMARY KEY (job_id)
+)
+USING DELTA
+LOCATION '/mnt/adls/ecomm_metadata/job_control_table'
+""")
+
+# Sample data for job_control_table
+pipeline_ids = spark.sql("SELECT pipeline_id, pipeline_name FROM ecomm_metadata.pipeline_config").collect()
+job_control_data = [
+    (generate_uuid(), pipeline_ids[0].pipeline_id, None, "Landing_to_Bronze_Orders", 1, True, datetime.now(), datetime.now()),
+    (generate_uuid(), pipeline_ids[1].pipeline_id, pipeline_ids[0].pipeline_id, "Bronze_to_Silver_Orders", 2, True, datetime.now(), datetime.now())
+]
+spark.createDataFrame(job_control_data, ["job_id", "pipeline_id", "parent_job_id", "job_name", "execution_order", "is_active", "created_at", "updated_at"]).write.mode("append").saveAsTable("ecomm_metadata.job_control_table")
+
+# Optimize tables with ZORDER for performance
+spark.sql("OPTIMIZE ecomm_metadata.etl_table_config ZORDER BY (table_id)")
+spark.sql("OPTIMIZE ecomm_metadata.column_mapping ZORDER BY (table_id, mapping_id)")
+spark.sql("OPTIMIZE ecomm_metadata.watermark_table ZORDER BY (table_id, watermark_id)")
+spark.sql("OPTIMIZE ecomm_metadata.scd_config ZORDER BY (table_id, scd_id)")
+spark.sql("OPTIMIZE ecomm_metadata.pipeline_status_log ZORDER BY (pipeline_id, log_id)")
+spark.sql("OPTIMIZE ecomm_metadata.error_log ZORDER BY (pipeline_id, error_id)")
+spark.sql("OPTIMIZE ecomm_metadata.pipeline_config ZORDER BY (pipeline_id)")
+spark.sql("OPTIMIZE ecomm_metadata.job_control_table ZORDER BY (pipeline_id, job_id)")
+
+# Display sample data for verification
+for table in ["etl_table_config", "column_mapping", "watermark_table", "scd_config", "pipeline_status_log", "error_log", "pipeline_config", "job_control_table"]:
+    print(f"Sample data for {table}:")
+    spark.sql(f"SELECT * FROM ecomm_metadata.{table} LIMIT 5").show(truncate=False)
